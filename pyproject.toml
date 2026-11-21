@@ -13,7 +13,7 @@ authors = [
     {name = "Christopher Hay"}
 ]
 dependencies = [
-    "chuk-mcp-server>=0.25",
+    "chuk-mcp-server>=0.25.4",
     "chuk-lazarus>=0.4.1",
     "scikit-learn>=1.4",
     "numpy>=1.26",

@@ -145,6 +145,15 @@ class ModelState:
         pipeline = UnifiedPipeline.from_pretrained(
             model_id, pipeline_config=pipeline_config, verbose=True
         )
+        if dtype == WeightDType.FLOAT32:
+            # The loader's dtype is not applied to the weights (E25-D note in
+            # chris-experiments/fleet/E26_recurrent_depth_xarch/e26_common.py), so a
+            # float32 request silently computed in bfloat16. Apply it here so the
+            # tools compute in the precision the caller declared.
+            import mlx.core as mx
+
+            pipeline.model.set_dtype(mx.float32)
+            mx.eval(pipeline.model.parameters())
 
         metadata = self._extract_metadata(model_id, pipeline)
 

@@ -9,6 +9,8 @@ Importing this package triggers @mcp.tool() registration for all geometry tools.
 """
 
 from . import branch_and_collapse  # noqa: F401
+from . import cell80_prosthesis  # noqa: F401
+from . import cell80_parse_execute  # noqa: F401
 from . import head_dla  # noqa: F401
 from . import head_output  # noqa: F401  (re-exports from head_dla)
 from . import kv_vectors  # noqa: F401  (re-exports from head_dla)
