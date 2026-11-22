@@ -21,6 +21,29 @@ uv run python examples/smoke_test.py
 uv run python examples/language_transition_demo.py
 ```
 
+### Linux x86_64 + NVIDIA GPU (CUDA 12.9)
+
+MLX has a CUDA backend on Linux. Install with the `cuda` extra:
+
+```bash
+uv sync --extra cuda          # add --extra dev for tests
+uv run python examples/smoke_test.py
+```
+
+This pulls `mlx-cuda-12` plus the CUDA 12.9 user-space libraries (cuBLAS,
+cuDNN, NVRTC, runtime headers) as wheels; no system CUDA toolkit is needed.
+Requirements: NVIDIA driver >= 550, GPU compute capability >= 7.5 (Turing or
+newer), glibc >= 2.35. Use `--extra cpu` instead for a CPU-only Linux install.
+
+Notes:
+- `nvidia-cuda-runtime-cu12` (>= 12.8) is required: MLX JIT-compiles kernels
+  with NVRTC 12.9, and an older system toolkit (e.g. CUDA 12.4 in
+  `/usr/local/cuda`) breaks bf16 gather kernels (`__nv_fp8_e8m0` errors).
+- On Turing (SM 7.5, e.g. TITAN RTX / RTX 20xx / T4) bfloat16 works but is
+  emulated (slower than fp32); float16 uses tensor cores. Pre-Ampere GPUs
+  have no native bf16.
+- The comparison demo (two 4B models in bf16) peaks at ~22 GB GPU memory.
+
 ## Claude Desktop
 
 Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
@@ -266,7 +289,8 @@ uv run chuk-mcp-lazarus http --port 8765
 ## Requirements
 
 - Python >= 3.11
-- Apple Silicon Mac (for MLX)
+- Apple Silicon Mac (MLX Metal), or Linux x86_64 with an NVIDIA GPU
+  (MLX CUDA, `--extra cuda`, compute capability >= 7.5, driver >= 550)
 - [chuk-lazarus](https://github.com/chuk-ai/chuk-lazarus) >= 0.4
 - [chuk-mcp-server](https://github.com/chuk-ai/chuk-mcp-server) >= 0.25
 

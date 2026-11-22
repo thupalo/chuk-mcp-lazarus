@@ -12,7 +12,7 @@ help:
 	@echo "  dev-install    - Install package in development mode"
 	@echo "  test           - Run pytest tests"
 	@echo "  test-cov       - Run tests with coverage report"
-	@echo "  smoke-test     - Run full smoke test (requires Apple Silicon + MLX)"
+	@echo "  smoke-test     - Run full smoke test (requires Apple Silicon, or Linux + NVIDIA via --extra cuda)"
 	@echo "  coverage-report - Show current coverage report"
 	@echo "  lint           - Run code linters"
 	@echo "  format         - Auto-format code"
@@ -155,7 +155,7 @@ coverage-report:
 		coverage report --omit="tests/*" || echo "No coverage data found. Run 'make test-cov' first."; \
 	fi
 
-# Run smoke test (requires Apple Silicon + MLX)
+# Run smoke test (requires Apple Silicon, or Linux + NVIDIA via --extra cuda)
 smoke-test:
 	@echo "Running smoke test (53 tests on SmolLM2-135M)..."
 	@if command -v uv >/dev/null 2>&1; then \

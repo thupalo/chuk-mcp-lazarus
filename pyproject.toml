@@ -20,6 +20,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Linux x86_64 + NVIDIA GPU (MLX CUDA backend). Needs driver >= 550 and
+# compute capability >= 7.5 (Turing or newer). MLX JIT-compiles kernels with
+# NVRTC 12.9; its bundled CCCL headers need CUDA >= 12.8 toolkit headers
+# (e.g. __nv_fp8_e8m0), which nvidia-cuda-runtime-cu12 provides, so an older
+# system toolkit in /usr/local/cuda is not used for bf16 gather kernels.
+cuda = [
+    "mlx[cuda12]>=0.31.1; sys_platform == 'linux'",
+    "nvidia-cuda-runtime-cu12>=12.9,<13; sys_platform == 'linux'",
+]
+# Linux without a GPU (MLX CPU backend).
+cpu = [
+    "mlx[cpu]>=0.31.1; sys_platform == 'linux'",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
