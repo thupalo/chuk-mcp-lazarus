@@ -252,8 +252,8 @@ class TestComputePerHeadAttention:
         from chuk_mcp_lazarus.tools.geometry.head_dla import _compute_per_head_attention
 
         layer = _make_mock_layer()
-        # rope returns the same arrays unchanged
-        layer.self_attn.rope = lambda q, k: (q, k)
+        # rope (like mlx.nn.RoPE) takes one array and returns it unchanged
+        layer.self_attn.rope = lambda x: x
         prev_h = mx.array(np.random.randn(1, SEQ_LEN, HIDDEN_DIM).astype(np.float32))
         mask = mx.array(np.zeros((SEQ_LEN, SEQ_LEN), dtype=np.float32))
 
@@ -1187,7 +1187,7 @@ class TestExtractKVectorImpl:
 
         mock_layer = _make_mock_layer()
         if with_rope:
-            mock_layer.self_attn.rope = lambda q, k: (q, k)
+            mock_layer.self_attn.rope = lambda x: x
         if with_k_norm:
             mock_layer.self_attn.k_norm = lambda x: x
 
@@ -1284,7 +1284,7 @@ class TestExtractQVectorImpl:
 
         mock_layer = _make_mock_layer()
         if with_rope:
-            mock_layer.self_attn.rope = lambda q, k: (q, k)
+            mock_layer.self_attn.rope = lambda x: x
         if with_q_norm:
             mock_layer.self_attn.q_norm = lambda x: x
 
