@@ -259,6 +259,12 @@ def _make_mx_stub() -> types.ModuleType:
     mx_metal.clear_cache = lambda: None
     mx_core.metal = mx_metal
 
+    # dtypes (used by _dtype.cast_model / resolve_dtype)
+    for _name in ("bfloat16", "float16", "float32", "floating"):
+        setattr(mx_core, _name, _name)
+    mx_core.issubdtype = lambda a, b: b == "floating" and a in ("bfloat16", "float16", "float32")
+    mx_core.clear_cache = lambda: None
+
     # mlx.nn stub
     class MockEmbedding:
         def __init__(self) -> None:
@@ -664,6 +670,13 @@ from chuk_mcp_lazarus.dark_table_registry import DarkTableRegistry  # noqa: E402
 # ---------------------------------------------------------------------------
 # 6. Fixtures
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _no_hf_hub_download():
+    """Keep tests offline: _dtype.read_model_type must not hit the HF Hub."""
+    with patch("huggingface_hub.hf_hub_download", side_effect=OSError("offline in tests")):
+        yield
 
 
 @pytest.fixture

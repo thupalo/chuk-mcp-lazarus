@@ -81,7 +81,7 @@ class ComparisonState:
     def metadata(self) -> ModelMetadata:
         return self._state.metadata
 
-    def load(self, model_id: str, dtype: WeightDType = WeightDType.BFLOAT16) -> ModelMetadata:
+    def load(self, model_id: str, dtype: WeightDType = WeightDType.AUTO) -> ModelMetadata:
         """Load a comparison model. Idempotent if same model_id."""
         with self._load_lock:
             if self._state.loaded and self._state.metadata.model_id == model_id:
@@ -95,15 +95,23 @@ class ComparisonState:
         from chuk_lazarus.inference import UnifiedPipeline, UnifiedPipelineConfig
         from chuk_lazarus.inference.loader import DType
 
-        dtype_enum = DType(dtype.value)
-        pipeline_config = UnifiedPipelineConfig(dtype=dtype_enum)
+        from ._dtype import cast_model, read_model_type, resolve_dtype
+
+        dtype, dtype_note = resolve_dtype(dtype, read_model_type(model_id))
+        if dtype_note:
+            logger.warning(dtype_note)
+        pipeline_config = UnifiedPipelineConfig(dtype=DType(dtype.value))
 
         logger.info("Loading comparison model %s (dtype=%s)...", model_id, dtype.value)
         pipeline = UnifiedPipeline.from_pretrained(
             model_id, pipeline_config=pipeline_config, verbose=True
         )
+        # chuk-lazarus ignores the dtype for sanitize()-loaded models; enforce it.
+        cast_model(pipeline.model, dtype)
 
-        metadata = self._extract_metadata(model_id, pipeline)
+        metadata = self._extract_metadata(model_id, pipeline).model_copy(
+            update={"dtype": dtype.value, "dtype_note": dtype_note}
+        )
 
         self._state = _InternalState(
             model=pipeline.model,

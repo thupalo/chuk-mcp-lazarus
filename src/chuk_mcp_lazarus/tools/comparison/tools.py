@@ -41,6 +41,8 @@ class LoadComparisonResult(BaseModel):
     hidden_dim: int
     num_attention_heads: int
     parameter_count: int
+    dtype: str = ""
+    dtype_note: str | None = None
     status: str = "loaded"
 
 
@@ -142,7 +144,7 @@ def _validate_layers(layers: list[int] | None, num_layers: int) -> list[int]:
 @mcp.tool()
 async def load_comparison_model(
     model_id: str,
-    dtype: str = "bfloat16",
+    dtype: str = "auto",
 ) -> dict:
     """
     Load a second model for two-model comparison analysis.
@@ -154,14 +156,16 @@ async def load_comparison_model(
 
     Args:
         model_id: HuggingFace model ID (e.g. "google/translategemma-4b-it").
-        dtype:    Weight dtype: "bfloat16", "float16", or "float32".
+        dtype:    Weight dtype: "auto" (default), "bfloat16", "float16", or "float32".
+                  "auto" = bfloat16 on Apple Silicon / NVIDIA SM>=8.0, float16 on
+                  older NVIDIA GPUs; Gemma models always use bfloat16.
     """
     try:
         weight_dtype = WeightDType(dtype)
     except ValueError:
         return make_error(
             ToolError.INVALID_INPUT,
-            f"Invalid dtype '{dtype}'. Use: bfloat16, float16, float32.",
+            f"Invalid dtype '{dtype}'. Use: auto, bfloat16, float16, float32.",
             "load_comparison_model",
         )
 
@@ -177,6 +181,8 @@ async def load_comparison_model(
             hidden_dim=metadata.hidden_dim,
             num_attention_heads=metadata.num_attention_heads,
             parameter_count=metadata.parameter_count,
+            dtype=metadata.dtype,
+            dtype_note=metadata.dtype_note,
         )
         return result.model_dump()
 

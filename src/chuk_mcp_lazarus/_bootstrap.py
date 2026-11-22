@@ -36,5 +36,33 @@ def ensure_optional_stubs() -> None:
             sys.modules["chuk_virtual_expert"] = stub
 
 
+def patch_fp16_rmsnorm() -> None:
+    """Make chuk-lazarus RMSNorm safe for float16 inputs.
+
+    Its RMSNorm computes ``mean(x * x)`` in the input dtype. In float16
+    any |x| > ~256 squares past 65504 -> rms = inf -> the norm outputs
+    zeros (layers become no-ops, logits all zero). ``mx.fast.rms_norm``
+    accumulates in float32. bfloat16/float32 keep the original path so
+    their numerics are unchanged.
+    """
+    try:
+        import mlx.core as mx
+        from chuk_lazarus.models_v2.components.normalization.rmsnorm import RMSNorm
+    except ImportError:
+        return
+    if getattr(RMSNorm, "_fp16_safe", False):
+        return
+    original = RMSNorm.__call__
+
+    def __call__(self, x):
+        if x.dtype == mx.float16:
+            return mx.fast.rms_norm(x, self.weight.astype(x.dtype), self.eps)
+        return original(self, x)
+
+    RMSNorm.__call__ = __call__
+    RMSNorm._fp16_safe = True
+
+
 # Run on import
 ensure_optional_stubs()
+patch_fp16_rmsnorm()

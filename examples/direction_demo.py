@@ -61,7 +61,7 @@ async def main(model_id: str) -> int:
     # ------------------------------------------------------------------
     # Step 1: Load model
     # ------------------------------------------------------------------
-    result = await load_model(model_id=model_id, dtype="bfloat16")
+    result = await load_model(model_id=model_id, dtype="auto")
     if result.get("error"):
         print(f"  FAILED: {result.get('message')}")
         return 1

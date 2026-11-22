@@ -39,9 +39,16 @@ Notes:
 - `nvidia-cuda-runtime-cu12` (>= 12.8) is required: MLX JIT-compiles kernels
   with NVRTC 12.9, and an older system toolkit (e.g. CUDA 12.4 in
   `/usr/local/cuda`) breaks bf16 gather kernels (`__nv_fp8_e8m0` errors).
-- On Turing (SM 7.5, e.g. TITAN RTX / RTX 20xx / T4) bfloat16 works but is
-  emulated (slower than fp32); float16 uses tensor cores. Pre-Ampere GPUs
-  have no native bf16.
+- `load_model` / `load_comparison_model` default to `dtype="auto"`:
+  bfloat16 on Apple Silicon and NVIDIA SM >= 8.0, float16 on older GPUs
+  (e.g. Turing SM 7.5: TITAN RTX / RTX 20xx / T4, where bfloat16 is only
+  emulated and slower than fp32). The dtype actually used is returned as
+  `dtype`. Smoke test: `--dtype {auto,bfloat16,float16,float32}`.
+- Gemma models always load as bfloat16 (a `dtype_note` explains any
+  override): their residual stream exceeds the float16 range, and float32
+  is currently broken for Gemma in chuk-lazarus.
+- float16 uses an fp32-accumulating RMSNorm (patched at import); the
+  chuk-lazarus RMSNorm otherwise overflows in float16 and zeroes outputs.
 - The comparison demo (two 4B models in bf16) peaks at ~22 GB GPU memory.
 
 ## Claude Desktop

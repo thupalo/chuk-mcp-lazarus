@@ -69,7 +69,7 @@ def check(label: str, result: dict, required_keys: list[str]) -> bool:
 # ---------------------------------------------------------------------------
 
 
-async def main(model_id: str) -> int:
+async def main(model_id: str, dtype: str = "auto") -> int:
     """Run all smoke tests. Returns 0 on success, 1 on failure."""
 
     # Import tools (triggers MCP registration)
@@ -126,7 +126,7 @@ async def main(model_id: str) -> int:
     # 1. load_model
     # ------------------------------------------------------------------
     print(f"\nLoading model: {model_id}")
-    result = await load_model(model_id=model_id, dtype="bfloat16")
+    result = await load_model(model_id=model_id, dtype=dtype)
     pp("load_model", result)
     ok = check("load_model", result, ["model_id", "family", "num_layers", "hidden_dim", "status"])
     results.append(ok)
@@ -136,7 +136,10 @@ async def main(model_id: str) -> int:
         return 1
 
     num_layers = result["num_layers"]
-    print(f"  Model has {num_layers} layers, hidden_dim={result['hidden_dim']}")
+    print(
+        f"  Model has {num_layers} layers, hidden_dim={result['hidden_dim']}, "
+        f"dtype={result.get('dtype')}"
+    )
 
     # ------------------------------------------------------------------
     # 2. get_model_info
@@ -1330,5 +1333,11 @@ if __name__ == "__main__":
         default="HuggingFaceTB/SmolLM2-135M",
         help="HuggingFace model ID to test with (default: SmolLM2-135M)",
     )
+    parser.add_argument(
+        "--dtype",
+        default="auto",
+        choices=["auto", "bfloat16", "float16", "float32"],
+        help="Weight dtype (default: auto -- float16 on pre-Ampere NVIDIA GPUs)",
+    )
     args = parser.parse_args()
-    sys.exit(asyncio.run(main(args.model)))
+    sys.exit(asyncio.run(main(args.model, args.dtype)))

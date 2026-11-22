@@ -18,8 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 class WeightDType(str, Enum):
-    """Supported weight data types."""
+    """Supported weight data types. ``auto`` picks per device/model (see _dtype)."""
 
+    AUTO = "auto"
     BFLOAT16 = "bfloat16"
     FLOAT16 = "float16"
     FLOAT32 = "float32"
@@ -47,6 +48,10 @@ class ModelMetadata(BaseModel):
     is_moe: bool = Field(False, description="Whether model uses mixture-of-experts.")
     num_experts: int | None = Field(None, description="Number of MoE experts, if applicable.")
     parameter_count: int = Field(0, description="Total parameter count.")
+    dtype: str = Field(default="", description="Weight dtype actually in use.")
+    dtype_note: str | None = Field(
+        default=None, description="Why the requested dtype was overridden."
+    )
 
 
 class LoadModelResult(BaseModel):
@@ -59,6 +64,8 @@ class LoadModelResult(BaseModel):
     hidden_dim: int
     num_attention_heads: int
     parameter_count: int
+    dtype: str = ""
+    dtype_note: str | None = None
     status: str = "loaded"
 
 
@@ -124,7 +131,7 @@ class ModelState:
     def metadata(self) -> ModelMetadata:
         return self._state.metadata
 
-    def load(self, model_id: str, dtype: WeightDType = WeightDType.BFLOAT16) -> ModelMetadata:
+    def load(self, model_id: str, dtype: WeightDType = WeightDType.AUTO) -> ModelMetadata:
         """Load a model. Idempotent: returns immediately if same model_id is already loaded."""
         with self._load_lock:
             if self._state.loaded and self._state.metadata.model_id == model_id:
@@ -138,15 +145,23 @@ class ModelState:
         from chuk_lazarus.inference import UnifiedPipeline, UnifiedPipelineConfig
         from chuk_lazarus.inference.loader import DType
 
-        dtype_enum = DType(dtype.value)
-        pipeline_config = UnifiedPipelineConfig(dtype=dtype_enum)
+        from ._dtype import cast_model, read_model_type, resolve_dtype
+
+        dtype, dtype_note = resolve_dtype(dtype, read_model_type(model_id))
+        if dtype_note:
+            logger.warning(dtype_note)
+        pipeline_config = UnifiedPipelineConfig(dtype=DType(dtype.value))
 
         logger.info("Loading model %s (dtype=%s)...", model_id, dtype.value)
         pipeline = UnifiedPipeline.from_pretrained(
             model_id, pipeline_config=pipeline_config, verbose=True
         )
+        # chuk-lazarus ignores the dtype for sanitize()-loaded models; enforce it.
+        cast_model(pipeline.model, dtype)
 
-        metadata = self._extract_metadata(model_id, pipeline)
+        metadata = self._extract_metadata(model_id, pipeline).model_copy(
+            update={"dtype": dtype.value, "dtype_note": dtype_note}
+        )
 
         self._state = _InternalState(
             model=pipeline.model,
